@@ -1,0 +1,12 @@
+venv/
+__pycache__/
+*.pyc
+data/stems/*
+data/midi/*
+data/output/*
+!data/*/.gitkeep
+
+# dir
+/output*
+/midi*
+/stems*

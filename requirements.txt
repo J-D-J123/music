@@ -1,0 +1,8 @@
+librosa>=0.10.0
+basic-pitch>=0.2.5
+music21>=9.1.0
+pretty_midi>=0.2.10
+demucs>=4.0.0
+pydub>=0.25.1
+numpy
+scipy
