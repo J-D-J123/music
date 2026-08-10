@@ -1,0 +1,97 @@
+instead of only transcribing other.midi transcribe all????? for a bigger picture then relate that to each insturment if that makes sense... or is stupid
+
+More Ideas: 
+https://arxiv.org/pdf/2509.23759/ -> use their model or train it on the MOSA violin dataset/ MAESTRO -> VioPTT/ MOSA-VPT -> if this needs 
+frames would a youtube video work? proabbly not and is not the point of this project. it is supposed to be only audio.
+
+https://www.jzcworks.com/documents/Strings2Scores.pdf/
+
+Finalized thoughts... 
+This system must be trained to use a NN system period. And have a estimate of what the next note is based off of the key, tempo, and preivious note, 
+
+1 issue would be that it would be a raw spectogram/ waveforms not the clear note, so i would have to give it the preivious 
+violin played note, 
+
+2 issue is the bowing, vibratio, tempo, statico, etc. 
+
+Model 
+
+Wav/Mp3 -> DEMUCS -> midi splits -> DEMCUS -> midi splits -> other_raw.midi is violin -> music.xml -> LSTM & GRU & Transformer -> Cleaner corrected music.xml 
+
+In this order will help lower the random notes and incorrect written notes on the sheet music. 
+
+Ideas from Gemmini on how to train 
+```
+Phase 1: Macro Pre-Training (The "Grammar" Phase)
+
+    Datasets: MAESTRO (MIDI-only) + PDMX (Filtered for valid MIDI/MusicXML).
+
+    Objective: Teach the model western music theory, chord progressions, rhythm, and structural phrasing.
+
+    How to execute:
+
+        Parse MAESTRO and extract only the highest melodic voice (the top note of chords) to prevent the model from learning multi-note piano clusters.
+
+        Filter PDMX using its CSV metadata to grab monophonic or single-track melodic scores.
+
+        Train your LSTM or Transformer using standard next-token cross-entropy loss over a sliding window.
+
+        Result: A model that understands how musical sentences and scales work conceptually.
+
+Phase 2: Domain Adaptation (The "Violin Physics" Phase)
+
+    Dataset: Zenodo Violin MIDI Dataset.
+
+    Objective: Adapt the model to the physical constraints, finger ranges, bow changes, and stylistic phrasing unique to the violin.
+
+    How to execute:
+
+        Freeze or lightly weight the early foundational layers of your model from Phase 1.
+
+        Continue training exclusively on the Zenodo Violin etudes and performances.
+
+        Because these files capture actual violin performances (including micro-timing and phrasing shifts), the network learns what sequences are physically playable on a fingerboard versus what is just theoretically possible on a piano.
+
+        Result: A model that speaks fluent "violin."
+
+Phase 3: Style Fine-Tuning (The "Personal ID" Phase)
+
+    Dataset: Your own recorded and transcribed audio sessions (converted to MIDI via basic-pitch or librosa).
+
+    Objective: Specialize the model entirely on your personal tendencies, technical strengths, and improvisational habits.
+
+    How to execute:
+
+        Take your personal dataset and split it into training and validation sets.
+
+        Run a final, low-learning-rate training loop over your model. Because the network already knows music theory (Phase 1) and violin mechanics (Phase 2), it will quickly adapt to your specific stylistic fingerprint without overfitting or breaking.
+
+        Result: A next-note predictor tailored to anticipate your exact playing habits.
+```
+
+Next Claude Prompt: 
+
+We are continuing an ongoing project to build a Python-based machine learning pipeline that takes transcribed violin performance data and trains a sequence model (using PyTorch) to predict the next note played. 
+
+### Project Goal
+Finish implementing the data preprocessing, dataset loaders, and model training loop so the neural network can ingest our multi-source symbolic music data and successfully learn next-note prediction for a violin.
+
+### Current Architecture & Stack
+- **Language:** Python
+- **Framework:** PyTorch (`nn.LSTM` / Transformer architecture)
+- **Data Pipeline:** 
+  1. MAESTRO dataset (MIDI-only, filtered for single-line melodies/highest voice for general musical theory).
+  2. PDMX dataset (MusicXML/MIDI, filtered for valid violin-relevant tracks).
+  3. Zenodo Violin MIDI Dataset (for violin-specific physical constraints and phrasing).
+
+### What Has Been Completed
+- Decided on a multi-stage curriculum learning approach (Macro Pre-training on theory/piano data -> Domain Adaptation on violin etudes -> Style Fine-tuning).
+- Mapped out tokenization strategy for discrete MIDI pitches (0–127 vocabulary + special tokens).
+- Established rolling window sequence formatting ($X$ inputs shifted by 1 timestep against $Y$ targets) using Cross-Entropy loss.
+
+### What Needs to Happen Next
+1. Write a modular Python script to parse and clean the selected dataset files (extracting single-voice monophonic note sequences from the MIDI files).
+2. Implement the PyTorch `Dataset` and `DataLoader` classes to handle sliding-window sequence batching.
+3. Build the core sequence model (LSTM/Transformer) initialization and the multi-epoch training loop with Adam optimizer and `nn.CrossEntropyLoss`.
+
+Please review this context. Start by briefly summarizing your understanding of where we are, and then provide the code for step 1 and 2 (data parsing and the PyTorch Dataset loader) so we can start building.
