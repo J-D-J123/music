@@ -10,3 +10,12 @@ data/output/*
 /output*
 /midi*
 /stems*
+
+# ml
+data/ml/raw/maestro/*
+data/ml/raw/maestro/*
+data/ml/raw/pdmx/*
+data/ml/raw/violin/*
+
+
+data/output/*

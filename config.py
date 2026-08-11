@@ -7,6 +7,8 @@ INPUT_DIR = ROOT / "data" / "input"
 STEMS_DIR = ROOT / "data" / "stems"
 MIDI_DIR = ROOT / "data" / "midi"
 OUTPUT_DIR = ROOT / "data" / "output"
+ML_CHECKPOINT_DIR = ROOT / "data" / "ml" / "checkpoints"
+ML_CORRECTION_CHECKPOINT = ML_CHECKPOINT_DIR / "style_finetune_final.pt"
 
 for d in (INPUT_DIR, STEMS_DIR, MIDI_DIR, OUTPUT_DIR):
     d.mkdir(parents=True, exist_ok=True)
