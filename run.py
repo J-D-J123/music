@@ -3,7 +3,7 @@ import shutil
 import subprocess
 from concurrent.futures import ThreadPoolExecutor
 
-from config import INPUT_DIR, STEMS_DIR, MIDI_DIR, OUTPUT_DIR, CONTEXT_SKIP_STEMS
+from config import INPUT_DIR, STEMS_DIR, MIDI_DIR, OUTPUT_DIR, CONTEXT_SKIP_STEMS, ML_CORRECTION_CHECKPOINT
 from pipeline.separate import separate_all
 from pipeline.parallel_transcribe import transcribe_many
 from pipeline.crepe_melody import extract_melody_crepe
@@ -16,6 +16,8 @@ from pipeline.notate import notate_full_and_parts
 from pipeline.midi_versioning import get_track_midi_dir
 from pipeline.double_stops import detect_double_stops
 from pipeline.transcribe import transcribe
+from pipeline.ml.correct_notes import correct_pitches
+from pipeline.muscriptor_melody import extract_melody_muscriptor
 
 BANNER = r"""
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -102,13 +104,38 @@ def run_once():
     if "other" not in stems:
         raise RuntimeError("Demucs produced no 'other' stem — nothing to transcribe as violin")
 
-    # Violin line: CREPE + onset detection on the isolated 'other' stem.
-    violin_notes = extract_melody_crepe(stems["other"])
+    # Violin line: MuScriptor gave visibly cleaner, more coherent output than
+    # CREPE + onset detection on Hungarian Dance -- flip to False to revert to
+    # the CREPE path if that ever changes on other tracks.
+    USE_MUSCRIPTOR_VIOLIN = True
 
-    # Re-round notes that landed near a semitone boundary, using the key as the
-    # tiebreak. Runs before double-stop detection so intervals are measured
-    # against corrected pitches.
-    violin_notes = resolve_ambiguous_pitches(violin_notes)
+    if USE_MUSCRIPTOR_VIOLIN:
+        violin_notes = extract_melody_muscriptor(stems["other"], track_midi_dir)
+    else:
+        violin_notes = extract_melody_crepe(stems["other"])
+        # Re-round notes that landed near a semitone boundary, using the key as
+        # the tiebreak. Runs before double-stop detection so intervals are
+        # measured against corrected pitches. Only meaningful for CREPE's raw
+        # per-frame pitch estimate -- MuScriptor emits decided note events with
+        # no equivalent ambiguity to resolve, so this is skipped on that path.
+        violin_notes = resolve_ambiguous_pitches(violin_notes)
+
+    # Model-based correction: flags/fixes notes the trained next-note model is
+    # both surprised by and confident about an alternative for. DISABLED by
+    # default -- on Hungarian Dance this corrected 29/167 notes and made the
+    # output noticeably worse (model's real violin training data is small and
+    # diluted by non-violin PDMX content, so it's still confidently wrong more
+    # often than it's helpfully right). Flip to True to re-test once the
+    # underlying model has more/better violin-specific training.
+    USE_ML_CORRECTION = False
+
+    if USE_ML_CORRECTION and ML_CORRECTION_CHECKPOINT.exists():
+        try:
+            violin_notes = correct_pitches(violin_notes, ML_CORRECTION_CHECKPOINT)
+        except Exception as e:
+            print(f"  ✗ ML note correction failed, continuing without it ({e})")
+    elif USE_ML_CORRECTION:
+        print(f"  (no trained note-prediction checkpoint at {ML_CORRECTION_CHECKPOINT} -- skipping ML correction)")
 
     # Basic Pitch on the same stem, once, for the polyphonic reference CREPE
     # can't provide (CREPE is single-pitch and cannot see double stops).
